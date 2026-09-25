@@ -330,6 +330,8 @@ export const iamPolicies: IAMPolicy[] = [
 
 // ─── Cost chart data ──────────────────────────────────────────────────────────
 export const costChartData = [
+  { month: 'Ene', total: 1850 },
+  { month: 'Feb', total: 1920 },
   { month: 'Mar', total: 2100 },
   { month: 'Abr', total: 2380 },
   { month: 'May', total: 2150 },
@@ -337,6 +339,9 @@ export const costChartData = [
   { month: 'Jul', total: 2450 },
   { month: 'Ago', total: 2890 },
   { month: 'Sep', total: 3120 },
+  { month: 'Oct', total: 2980 },
+  { month: 'Nov', total: 3150 },
+  { month: 'Dic', total: 3300 },
 ];
 
 export const costDistributionData = [

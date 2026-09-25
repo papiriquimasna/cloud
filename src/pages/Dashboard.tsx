@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Server, DollarSign, Globe, Shield, CheckCircle, AlertTriangle, XCircle,
   TrendingUp, Cloud, Layers, Activity, Download, FileText,
@@ -14,7 +14,11 @@ import StatCard from '../components/StatCard';
 import StatusBadge from '../components/StatusBadge';
 import { awsServices, awsRegions, securityItems, costChartData, costDistributionData } from '../data/awsServices';
 
+type CostPeriod = '1' | '3' | '6' | '7' | '12';
+
 const Dashboard: React.FC = () => {
+  const [costPeriod, setCostPeriod] = useState<CostPeriod>('7');
+  
   const activeServices = awsServices.filter((s) => s.status === 'active').length;
   const totalMonthlyCost = awsServices.reduce((acc, s) => acc + s.monthlyBaseCost, 0);
   const totalAnnualCost = totalMonthlyCost * 12;
@@ -24,6 +28,17 @@ const Dashboard: React.FC = () => {
   const okIssues = securityItems.filter((s) => s.status === 'ok').length;
 
   const securityScore = Math.round((okIssues / securityItems.length) * 100);
+
+  // Filtrar datos según el período seleccionado
+  const filteredCostData = costChartData.slice(-Number(costPeriod));
+  
+  const periodLabels: Record<CostPeriod, string> = {
+    '1': '1 mes',
+    '3': '3 meses',
+    '6': '6 meses',
+    '7': '7 meses',
+    '12': '12 meses',
+  };
 
   // Download PDF Report
   const downloadPDF = () => {
@@ -218,15 +233,29 @@ const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Cost Trend Chart */}
         <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
             <div>
               <h2 className="font-semibold text-slate-800">Tendencia de Costos</h2>
-              <p className="text-xs text-slate-400 mt-0.5">Últimos 7 meses — USD</p>
+              <p className="text-xs text-slate-400 mt-0.5">{periodLabels[costPeriod]} — USD</p>
             </div>
-            <span className="px-3 py-1 bg-blue-50 text-blue-600 text-xs font-semibold rounded-full">Mensual</span>
+            <div className="flex gap-2">
+              {(['1', '3', '6', '7', '12'] as CostPeriod[]).map((period) => (
+                <button
+                  key={period}
+                  onClick={() => setCostPeriod(period)}
+                  className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
+                    costPeriod === period
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  {periodLabels[period]}
+                </button>
+              ))}
+            </div>
           </div>
           <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={costChartData}>
+            <AreaChart data={filteredCostData}>
               <defs>
                 <linearGradient id="costGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#2563EB" stopOpacity={0.15} />
