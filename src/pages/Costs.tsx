@@ -178,16 +178,26 @@ const Costs: React.FC = () => {
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 mb-1.5">Cantidad</label>
                       <input
-                        type="number" min={1} value={quantity}
-                        onChange={(e) => setQuantity(Number(e.target.value))}
+                        type="text"
+                        value={quantity}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^0-9]/g, '');
+                          setQuantity(val ? Number(val) : 1);
+                        }}
+                        placeholder="Ej: 2"
                         className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                       />
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 mb-1.5">Horas estimadas</label>
                       <input
-                        type="number" min={1} max={8760} value={hours}
-                        onChange={(e) => setHours(Number(e.target.value))}
+                        type="text"
+                        value={hours}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^0-9]/g, '');
+                          setHours(val ? Number(val) : 1);
+                        }}
+                        placeholder="Ej: 720"
                         className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                       />
                     </div>
