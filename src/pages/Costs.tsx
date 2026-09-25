@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, DollarSign, TrendingUp, Calculator, CheckSquare, FileText } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -13,21 +13,36 @@ const Costs: React.FC = () => {
   const { plans } = usePlanning();
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [items, setItems] = useState<CostItem[]>([]);
-  const [serviceId, setServiceId] = useState(awsServices[0].id);
+  const [serviceId, setServiceId] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [hours, setHours] = useState(720);
   const [formError, setFormError] = useState('');
 
   const selectedPlan = plans.find((p) => p.id === selectedPlanId);
-  const selectedSvc = awsServices.find((s) => s.id === serviceId)!;
+  
+  // Filtrar servicios según la propuesta seleccionada
+  const availableServices = selectedPlan 
+    ? awsServices.filter((svc) => selectedPlan.selectedServices.includes(svc.id))
+    : [];
+  
+  // Auto-seleccionar el primer servicio cuando se selecciona una propuesta
+  useEffect(() => {
+    if (availableServices.length > 0 && !serviceId) {
+      setServiceId(availableServices[0].id);
+    }
+  }, [selectedPlanId, availableServices.length, serviceId]);
+  
+  const selectedSvc = awsServices.find((s) => s.id === serviceId);
 
-  const unitCost = selectedSvc.monthlyBaseCost > 0 ? selectedSvc.monthlyBaseCost / 720 : 0.05;
+  // Calcular costos basados en las horas estimadas
+  const unitCost = selectedSvc ? (selectedSvc.monthlyBaseCost > 0 ? selectedSvc.monthlyBaseCost / 720 : 0.05) : 0;
   const estimatedCost = +(unitCost * quantity * hours).toFixed(2);
-  const monthlyCost = +(unitCost * quantity * 720).toFixed(2);
-  const annualCost = +(monthlyCost * 12).toFixed(2);
+  const monthlyCost = estimatedCost; // Ahora el costo mensual es igual al costo estimado basado en horas ingresadas
+  const annualCost = +(estimatedCost * 12).toFixed(2); // Anual = estimado × 12 meses
 
   const handleAdd = () => {
     if (!selectedPlanId) { setFormError('Primero selecciona una propuesta.'); return; }
+    if (!selectedSvc) { setFormError('Selecciona un servicio válido.'); return; }
     if (quantity <= 0 || hours <= 0) { setFormError('Cantidad y horas deben ser mayores a 0.'); return; }
     setFormError('');
     const newItem: CostItem = {
@@ -144,14 +159,19 @@ const Costs: React.FC = () => {
 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">Servicio</label>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                      Servicio (de tu propuesta)
+                    </label>
                     <select
                       value={serviceId}
                       onChange={(e) => setServiceId(e.target.value)}
                       className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white"
                     >
-                      {awsServices.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                      {availableServices.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                     </select>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Solo servicios de la propuesta seleccionada
+                    </p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
@@ -178,15 +198,21 @@ const Costs: React.FC = () => {
                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Vista previa del costo</p>
                     {[
                       { label: 'Costo unitario/hora', value: `$${unitCost.toFixed(4)}` },
-                      { label: 'Costo estimado', value: `$${estimatedCost}` },
-                      { label: 'Costo mensual (720 h)', value: `$${monthlyCost}`, highlight: true },
-                      { label: 'Costo anual', value: `$${annualCost}`, highlight: true },
+                      { label: 'Horas estimadas', value: hours },
+                      { label: 'Costo total estimado', value: `$${estimatedCost}`, highlight: true },
+                      { label: 'Proyección mensual', value: `$${monthlyCost}`, highlight: true },
+                      { label: 'Proyección anual (×12)', value: `$${annualCost}`, highlight: true },
                     ].map(({ label, value, highlight }) => (
                       <div key={label} className={`flex justify-between text-sm ${highlight ? 'font-bold text-slate-800' : 'text-slate-500'}`}>
                         <span>{label}</span>
                         <span className={highlight ? 'text-blue-600' : ''}>{value}</span>
                       </div>
                     ))}
+                    <div className="mt-3 pt-3 border-t border-slate-200">
+                      <p className="text-xs text-slate-400 leading-relaxed">
+                        💡 Los costos se calculan en base a las <strong>{hours} horas</strong> que ingresaste.
+                      </p>
+                    </div>
                   </div>
 
                   {formError && <p className="text-xs text-red-500">{formError}</p>}
