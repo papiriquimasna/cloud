@@ -1,12 +1,15 @@
 import React from 'react';
 import {
   Server, DollarSign, Globe, Shield, CheckCircle, AlertTriangle, XCircle,
-  TrendingUp, Cloud, Layers, Activity,
+  TrendingUp, Cloud, Layers, Activity, Download, FileText,
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
 } from 'recharts';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 import StatCard from '../components/StatCard';
 import StatusBadge from '../components/StatusBadge';
 import { awsServices, awsRegions, securityItems, costChartData, costDistributionData } from '../data/awsServices';
@@ -22,8 +25,159 @@ const Dashboard: React.FC = () => {
 
   const securityScore = Math.round((okIssues / securityItems.length) * 100);
 
+  // Download PDF Report
+  const downloadPDF = () => {
+    const doc = new jsPDF();
+    
+    // Header
+    doc.setFontSize(20);
+    doc.setTextColor(37, 99, 235);
+    doc.text('CloudOps Dashboard - Reporte', 14, 20);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`Generado: ${new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })}`, 14, 28);
+    
+    // KPIs Summary
+    doc.setFontSize(14);
+    doc.setTextColor(30, 41, 59);
+    doc.text('Resumen General', 14, 40);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(71, 85, 105);
+    doc.text(`Servicios Activos: ${activeServices} de ${awsServices.length}`, 14, 48);
+    doc.text(`Costo Mensual: $${totalMonthlyCost.toFixed(2)} USD`, 14, 54);
+    doc.text(`Costo Anual: $${totalAnnualCost.toFixed(2)} USD`, 14, 60);
+    doc.text(`Regiones Activas: ${awsRegions.filter((r) => r.status === 'operational').length} de ${awsRegions.length}`, 14, 66);
+    doc.text(`Score de Seguridad: ${securityScore}%`, 14, 72);
+    
+    // Services Table
+    doc.setFontSize(14);
+    doc.setTextColor(30, 41, 59);
+    doc.text('Servicios AWS', 14, 84);
+    
+    autoTable(doc, {
+      startY: 88,
+      head: [['Servicio', 'Categoría', 'Estado', 'Costo Mensual']],
+      body: awsServices.slice(0, 7).map((svc) => [
+        svc.name,
+        svc.category,
+        svc.status === 'active' ? 'Activo' : svc.status === 'pending' ? 'Pendiente' : 'Inactivo',
+        svc.monthlyBaseCost > 0 ? `$${svc.monthlyBaseCost.toFixed(2)}` : 'Gratuito',
+      ]),
+      headStyles: { fillColor: [37, 99, 235], textColor: 255, fontSize: 9 },
+      bodyStyles: { fontSize: 8 },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+    });
+    
+    // Security Status
+    const finalY = (doc as any).lastAutoTable.finalY || 140;
+    doc.setFontSize(14);
+    doc.setTextColor(30, 41, 59);
+    doc.text('Estado de Seguridad', 14, finalY + 10);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(22, 163, 74);
+    doc.text(`✓ Correctos: ${okIssues}`, 14, finalY + 18);
+    doc.setTextColor(245, 158, 11);
+    doc.text(`⚠ Revisión: ${warningIssues}`, 14, finalY + 24);
+    doc.setTextColor(220, 38, 38);
+    doc.text(`✗ Críticos: ${criticalIssues}`, 14, finalY + 30);
+    
+    // Footer
+    doc.setFontSize(8);
+    doc.setTextColor(148, 163, 184);
+    doc.text('CloudOps Dashboard - AWS Cloud Foundations', 14, 285);
+    
+    doc.save(`cloudops-dashboard-${new Date().toISOString().split('T')[0]}.pdf`);
+  };
+
+  // Download Excel Report
+  const downloadExcel = () => {
+    const wb = XLSX.utils.book_new();
+    
+    // Sheet 1: Summary
+    const summaryData = [
+      ['CloudOps Dashboard - Reporte'],
+      [`Fecha: ${new Date().toLocaleDateString('es-ES')}`],
+      [],
+      ['Métrica', 'Valor'],
+      ['Servicios Activos', `${activeServices} de ${awsServices.length}`],
+      ['Costo Mensual', `$${totalMonthlyCost.toFixed(2)}`],
+      ['Costo Anual', `$${totalAnnualCost.toFixed(2)}`],
+      ['Regiones Activas', `${awsRegions.filter((r) => r.status === 'operational').length}`],
+      ['Score de Seguridad', `${securityScore}%`],
+    ];
+    const ws1 = XLSX.utils.aoa_to_sheet(summaryData);
+    XLSX.utils.book_append_sheet(wb, ws1, 'Resumen');
+    
+    // Sheet 2: Services
+    const servicesData = [
+      ['Servicio', 'Categoría', 'Estado', 'Costo Mensual', 'Función Principal'],
+      ...awsServices.map((svc) => [
+        svc.name,
+        svc.category,
+        svc.status,
+        svc.monthlyBaseCost,
+        svc.mainFunction,
+      ]),
+    ];
+    const ws2 = XLSX.utils.aoa_to_sheet(servicesData);
+    XLSX.utils.book_append_sheet(wb, ws2, 'Servicios');
+    
+    // Sheet 3: Regions
+    const regionsData = [
+      ['Región', 'Ubicación', 'Estado', 'Latencia (ms)', 'Zonas de Disponibilidad'],
+      ...awsRegions.map((r) => [
+        r.name,
+        r.location,
+        r.status,
+        r.latency,
+        r.availabilityZones,
+      ]),
+    ];
+    const ws3 = XLSX.utils.aoa_to_sheet(regionsData);
+    XLSX.utils.book_append_sheet(wb, ws3, 'Regiones');
+    
+    // Sheet 4: Security
+    const securityData = [
+      ['Categoría', 'Estado', 'Total'],
+      ['Correctos', 'ok', okIssues],
+      ['Revisión', 'warning', warningIssues],
+      ['Críticos', 'critical', criticalIssues],
+    ];
+    const ws4 = XLSX.utils.aoa_to_sheet(securityData);
+    XLSX.utils.book_append_sheet(wb, ws4, 'Seguridad');
+    
+    XLSX.writeFile(wb, `cloudops-dashboard-${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
   return (
     <div className="p-6 space-y-6">
+      {/* Header with Download Buttons */}
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Panel de Control</h1>
+          <p className="text-sm text-slate-500 mt-1">Resumen de tu infraestructura Cloud</p>
+        </div>
+        <div className="flex gap-3">
+          <button
+            onClick={downloadPDF}
+            className="flex items-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm"
+          >
+            <FileText size={16} />
+            Descargar PDF
+          </button>
+          <button
+            onClick={downloadExcel}
+            className="flex items-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm"
+          >
+            <Download size={16} />
+            Descargar Excel
+          </button>
+        </div>
+      </div>
+
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
