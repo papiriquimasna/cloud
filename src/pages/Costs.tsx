@@ -14,8 +14,8 @@ const Costs: React.FC = () => {
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [items, setItems] = useState<CostItem[]>([]);
   const [serviceId, setServiceId] = useState('');
-  const [quantity, setQuantity] = useState(1);
-  const [hours, setHours] = useState(720);
+  const [quantity, setQuantity] = useState('');
+  const [hours, setHours] = useState('');
   const [formError, setFormError] = useState('');
 
   const selectedPlan = plans.find((p) => p.id === selectedPlanId);
@@ -35,22 +35,25 @@ const Costs: React.FC = () => {
   const selectedSvc = awsServices.find((s) => s.id === serviceId);
 
   // Calcular costos basados en las horas estimadas
+  const quantityNum = quantity ? Number(quantity) : 0;
+  const hoursNum = hours ? Number(hours) : 0;
   const unitCost = selectedSvc ? (selectedSvc.monthlyBaseCost > 0 ? selectedSvc.monthlyBaseCost / 720 : 0.05) : 0;
-  const estimatedCost = +(unitCost * quantity * hours).toFixed(2);
+  const estimatedCost = +(unitCost * quantityNum * hoursNum).toFixed(2);
   const monthlyCost = estimatedCost; // Ahora el costo mensual es igual al costo estimado basado en horas ingresadas
   const annualCost = +(estimatedCost * 12).toFixed(2); // Anual = estimado × 12 meses
 
   const handleAdd = () => {
     if (!selectedPlanId) { setFormError('Primero selecciona una propuesta.'); return; }
     if (!selectedSvc) { setFormError('Selecciona un servicio válido.'); return; }
-    if (quantity <= 0 || hours <= 0) { setFormError('Cantidad y horas deben ser mayores a 0.'); return; }
+    if (!quantity || quantityNum <= 0) { setFormError('Ingresa una cantidad válida mayor a 0.'); return; }
+    if (!hours || hoursNum <= 0) { setFormError('Ingresa horas válidas mayores a 0.'); return; }
     setFormError('');
     const newItem: CostItem = {
       id: Date.now().toString(),
       serviceId,
       serviceName: selectedSvc.name,
-      quantity,
-      estimatedHours: hours,
+      quantity: quantityNum,
+      estimatedHours: hoursNum,
       unitCost: +unitCost.toFixed(4),
       estimatedCost,
       monthlyCost,
@@ -182,7 +185,7 @@ const Costs: React.FC = () => {
                         value={quantity}
                         onChange={(e) => {
                           const val = e.target.value.replace(/[^0-9]/g, '');
-                          setQuantity(val ? Number(val) : 1);
+                          setQuantity(val);
                         }}
                         placeholder="Ej: 2"
                         className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
@@ -195,7 +198,7 @@ const Costs: React.FC = () => {
                         value={hours}
                         onChange={(e) => {
                           const val = e.target.value.replace(/[^0-9]/g, '');
-                          setHours(val ? Number(val) : 1);
+                          setHours(val);
                         }}
                         placeholder="Ej: 720"
                         className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
@@ -208,7 +211,7 @@ const Costs: React.FC = () => {
                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Vista previa del costo</p>
                     {[
                       { label: 'Costo unitario/hora', value: `$${unitCost.toFixed(4)}` },
-                      { label: 'Horas estimadas', value: hours },
+                      { label: 'Horas estimadas', value: hoursNum || '-' },
                       { label: 'Costo total estimado', value: `$${estimatedCost}`, highlight: true },
                       { label: 'Proyección mensual', value: `$${monthlyCost}`, highlight: true },
                       { label: 'Proyección anual (×12)', value: `$${annualCost}`, highlight: true },
@@ -220,7 +223,7 @@ const Costs: React.FC = () => {
                     ))}
                     <div className="mt-3 pt-3 border-t border-slate-200">
                       <p className="text-xs text-slate-400 leading-relaxed">
-                        💡 Los costos se calculan en base a las <strong>{hours} horas</strong> que ingresaste.
+                        💡 Los costos se calculan en base a las <strong>{hoursNum || 0} horas</strong> que ingresaste.
                       </p>
                     </div>
                   </div>
